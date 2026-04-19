@@ -293,5 +293,15 @@ def main(page: ft.Page):
     page.add(background)
     update_playlist_ui()
 
-# Jalankan Aplikasi! (assets_dir="." sangat penting agar Flet bisa membaca folder static)
-ft.app(target=main, assets_dir=".")
+# --- MENJALANKAN APLIKASI UNTUK WEB & APK ---
+if __name__ == '__main__':
+    # Mengambil port dari server (Railway), atau gunakan 8000 jika di lokal
+    port = int(os.environ.get("PORT", 8000))
+    ft.app(
+        target=main, 
+        assets_dir=".", 
+        view=ft.AppView.WEB_BROWSER, 
+        host="0.0.0.0", 
+        port=port
+    )
+
