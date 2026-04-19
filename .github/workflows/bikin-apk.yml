@@ -1,0 +1,35 @@
+name: Buat APK Android
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil Kode dari GitHub
+        uses: actions/checkout@v3
+
+      - name: Siapkan Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Siapkan Mesin Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Instal Alat Pembuat Flet
+        run: pip install flet
+
+      - name: Mulai Memasak APK!
+        run: flet build apk
+
+      - name: Unggah Hasil APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: Karamoyy-App-APK
+          path: build/apk/**/*.apk

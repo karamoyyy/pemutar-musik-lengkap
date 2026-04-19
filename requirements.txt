@@ -1,3 +1,2 @@
-Flask
+flet
 yt-dlp
-gunicorn
