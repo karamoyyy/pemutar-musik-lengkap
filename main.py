@@ -1,5 +1,5 @@
 import flet as ft
-import flet_audio as fta # PERUBAHAN: Modul audio baru
+import flet_audio as fta
 import os
 import json
 import uuid
@@ -34,11 +34,10 @@ def main(page: ft.Page):
     # --- VARIABEL STATE ---
     playlist_data = read_playlist()
     current_playing_index = -1
-    repeat_mode = 0 # 0: Berurutan, 1: Ulangi 1, 2: Ulangi Semua
+    repeat_mode = 0
     search_query = ""
 
     # --- KOMPONEN AUDIO ---
-    # PERUBAHAN: Memanggil Audio dari modul fta
     audio = fta.Audio(autoplay=True)
     page.overlay.append(audio)
 
@@ -208,7 +207,8 @@ def main(page: ft.Page):
             loading_yt.visible = False
             page.update()
 
-    def on_file_picked(e: ft.FilePickerResultEvent):
+    # PERUBAHAN: Menghapus label "ft.FilePickerResultEvent" yang bikin error
+    def on_file_picked(e):
         if e.files:
             for f in e.files:
                 song_id = str(uuid.uuid4())
