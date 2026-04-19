@@ -1,5 +1,5 @@
 import flet as ft
-import flet_audio as fta
+import flet_audio as fta # PERUBAHAN: Modul audio baru
 import os
 import json
 import uuid
@@ -38,11 +38,12 @@ def main(page: ft.Page):
     search_query = ""
 
     # --- KOMPONEN AUDIO ---
+    # PERUBAHAN: Memanggil Audio dari modul fta
     audio = fta.Audio(autoplay=True)
     page.overlay.append(audio)
 
     # --- ELEMEN UI ---
-    now_playing_text = ft.Text("Pilih lagu untuk diputar", size=14, color=ft.colors.GREY_600)
+    now_playing_text = ft.Text("Pilih lagu untuk diputar", size=14, color=ft.Colors.GREY_600)
     song_count_text = ft.Text(f"({len(playlist_data)} Lagu)", size=16, color=PRIMARY, weight=ft.FontWeight.BOLD)
     loading_yt = ft.Text("Sedang mendownload... Mohon tunggu.", color=PRIMARY, visible=False, size=12)
     playlist_view = ft.ListView(expand=True, spacing=10, padding=10)
@@ -119,7 +120,7 @@ def main(page: ft.Page):
         update_playlist_ui()
         page.update()
 
-    # Logika Rename (Menggunakan Dialog Flet)
+    # Logika Rename
     rename_tf = ft.TextField(label="Nama Lagu Baru")
     rename_index = -1
 
@@ -155,28 +156,26 @@ def main(page: ft.Page):
         playlist_view.controls.clear()
         
         for i, song in enumerate(playlist_data):
-            # Fitur Pencarian
             if search_query.lower() not in song['title'].lower():
                 continue
 
             is_playing = (i == current_playing_index)
-            title_color = PRIMARY if is_playing else ft.colors.GREY_800
+            title_color = PRIMARY if is_playing else ft.Colors.GREY_800
             
-            # Kumpulan Tombol Baris
             btn_row = ft.Row(spacing=3)
-            if i > 0: btn_row.controls.append(ft.IconButton(ft.icons.ARROW_UPWARD, icon_color="#a18cd1", icon_size=18, on_click=lambda e, idx=i: move_song(idx, 'up')))
-            if i < len(playlist_data) - 1: btn_row.controls.append(ft.IconButton(ft.icons.ARROW_DOWNWARD, icon_color="#a18cd1", icon_size=18, on_click=lambda e, idx=i: move_song(idx, 'down')))
-            btn_row.controls.append(ft.IconButton(ft.icons.EDIT, icon_color="#4facfe", icon_size=18, on_click=lambda e, idx=i: open_rename_dialog(idx)))
-            btn_row.controls.append(ft.IconButton(ft.icons.DELETE, icon_color="#ff4b4b", icon_size=18, on_click=lambda e, idx=i: delete_song(idx)))
+            if i > 0: btn_row.controls.append(ft.IconButton(ft.Icons.ARROW_UPWARD, icon_color="#a18cd1", icon_size=18, on_click=lambda e, idx=i: move_song(idx, 'up')))
+            if i < len(playlist_data) - 1: btn_row.controls.append(ft.IconButton(ft.Icons.ARROW_DOWNWARD, icon_color="#a18cd1", icon_size=18, on_click=lambda e, idx=i: move_song(idx, 'down')))
+            btn_row.controls.append(ft.IconButton(ft.Icons.EDIT, icon_color="#4facfe", icon_size=18, on_click=lambda e, idx=i: open_rename_dialog(idx)))
+            btn_row.controls.append(ft.IconButton(ft.Icons.DELETE, icon_color="#ff4b4b", icon_size=18, on_click=lambda e, idx=i: delete_song(idx)))
 
             row = ft.Container(
                 content=ft.Row([
                     ft.Text(song['title'], weight=ft.FontWeight.BOLD, color=title_color, expand=True, overflow=ft.TextOverflow.ELLIPSIS),
                     btn_row,
-                    ft.IconButton(icon=ft.icons.PLAY_CIRCLE_FILL, icon_color=PRIMARY, on_click=lambda e, idx=i: play_song(idx))
+                    ft.IconButton(icon=ft.Icons.PLAY_CIRCLE_FILL, icon_color=PRIMARY, on_click=lambda e, idx=i: play_song(idx))
                 ]),
-                bgcolor=ft.colors.WHITE, padding=10, border_radius=8,
-                shadow=ft.BoxShadow(blur_radius=5, color=ft.colors.BLACK12)
+                bgcolor=ft.Colors.WHITE, padding=10, border_radius=8,
+                shadow=ft.BoxShadow(blur_radius=5, color=ft.Colors.BLACK12)
             )
             playlist_view.controls.append(row)
 
@@ -239,12 +238,11 @@ def main(page: ft.Page):
     # --- DESAIN UI UTAMA (GABUNGAN) ---
     def create_section(title, content):
         return ft.Container(
-            content=ft.Column([ft.Text(title, weight=ft.FontWeight.BOLD, color=ft.colors.GREY_800), content]),
-            bgcolor=ft.colors.WHITE, padding=15, border_radius=12,
-            shadow=ft.BoxShadow(blur_radius=10, color=ft.colors.BLACK12)
+            content=ft.Column([ft.Text(title, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY_800), content]),
+            bgcolor=ft.Colors.WHITE, padding=15, border_radius=12,
+            shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.BLACK12)
         )
 
-    # Social Navbar
     def social_link(text, url):
         return ft.TextButton(text, url=url, style=ft.ButtonStyle(color="#888888"))
 
@@ -255,7 +253,6 @@ def main(page: ft.Page):
         social_link("Gmail", "mailto:dandyahmad647@gmail.com"),
     ], alignment=ft.MainAxisAlignment.CENTER)
 
-    # Kartu Putih Utama
     main_card = ft.Container(
         content=ft.Column([
             ft.Row([
@@ -264,27 +261,26 @@ def main(page: ft.Page):
             ], alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([now_playing_text], alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([
-                ft.IconButton(ft.icons.PLAY_ARROW, icon_color=PRIMARY, on_click=lambda e: audio.resume()),
-                ft.IconButton(ft.icons.PAUSE, icon_color=PRIMARY, on_click=lambda e: audio.pause()),
+                ft.IconButton(ft.Icons.PLAY_ARROW, icon_color=PRIMARY, on_click=lambda e: audio.resume()),
+                ft.IconButton(ft.Icons.PAUSE, icon_color=PRIMARY, on_click=lambda e: audio.pause()),
             ], alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([repeat_btn], alignment=ft.MainAxisAlignment.CENTER),
             
             create_section("Tambah dari YouTube Music:", ft.Column([
-                ft.Row([yt_input, ft.ElevatedButton("Download", bgcolor=PRIMARY, color=ft.colors.WHITE, on_click=add_youtube)]),
+                ft.Row([yt_input, ft.ElevatedButton("Download", bgcolor=PRIMARY, color=ft.Colors.WHITE, on_click=add_youtube)]),
                 loading_yt
             ])),
-            create_section("Upload From File:", ft.ElevatedButton("Pilih Lagu", icon=ft.icons.UPLOAD_FILE, bgcolor=SECONDARY, color=ft.colors.WHITE, width=float("inf"), on_click=lambda _: file_picker.pick_files())),
+            create_section("Upload From File:", ft.ElevatedButton("Pilih Lagu", icon=ft.Icons.UPLOAD_FILE, bgcolor=SECONDARY, color=ft.Colors.WHITE, width=float("inf"), on_click=lambda _: file_picker.pick_files())),
             create_section("Cari Lagu:", search_input),
             
-            ft.Container(content=playlist_view, height=250), # Ketinggian box playlist
+            ft.Container(content=playlist_view, height=250),
             ft.Divider(),
             social_navbar
         ]),
-        width=500, bgcolor=ft.colors.WHITE.with_opacity(0.95), padding=30, border_radius=20,
-        shadow=ft.BoxShadow(blur_radius=30, color=ft.colors.BLACK26)
+        width=500, bgcolor=ft.Colors.WHITE.with_opacity(0.95), padding=30, border_radius=20,
+        shadow=ft.BoxShadow(blur_radius=30, color=ft.Colors.BLACK26)
     )
 
-    # Latar Belakang Gradasi
     background = ft.Container(
         content=main_card,
         gradient=ft.LinearGradient(begin=ft.alignment.top_left, end=ft.alignment.bottom_right, colors=["#a18cd1", "#fbc2eb"]),
@@ -296,7 +292,6 @@ def main(page: ft.Page):
 
 # --- MENJALANKAN APLIKASI UNTUK WEB & APK ---
 if __name__ == '__main__':
-    # Mengambil port dari server (Railway), atau gunakan 8000 jika di lokal
     port = int(os.environ.get("PORT", 8000))
     ft.app(
         target=main, 
@@ -305,4 +300,3 @@ if __name__ == '__main__':
         host="0.0.0.0", 
         port=port
     )
-
