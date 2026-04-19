@@ -207,7 +207,6 @@ def main(page: ft.Page):
             loading_yt.visible = False
             page.update()
 
-    # PERUBAHAN: Menghapus label "ft.FilePickerResultEvent" yang bikin error
     def on_file_picked(e):
         if e.files:
             for f in e.files:
@@ -224,7 +223,10 @@ def main(page: ft.Page):
             update_playlist_ui()
             page.update()
 
-    file_picker = ft.FilePicker(on_result=on_file_picked)
+    # PERUBAHAN ADA DI SINI:
+    # Memisahkan on_result agar tidak di dalam tanda kurung
+    file_picker = ft.FilePicker()
+    file_picker.on_result = on_file_picked
     page.overlay.append(file_picker)
 
     def on_search(e):
