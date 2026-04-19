@@ -223,10 +223,7 @@ def main(page: ft.Page):
             update_playlist_ui()
             page.update()
 
-    # PERUBAHAN ADA DI SINI:
-    # Memisahkan on_result agar tidak di dalam tanda kurung
-    file_picker = ft.FilePicker()
-    file_picker.on_result = on_file_picked
+    file_picker = ft.FilePicker(on_result=on_file_picked)
     page.overlay.append(file_picker)
 
     def on_search(e):
@@ -279,7 +276,10 @@ def main(page: ft.Page):
             ft.Divider(),
             social_navbar
         ]),
-        width=500, bgcolor=ft.Colors.WHITE.with_opacity(0.95), padding=30, border_radius=20,
+        width=500, 
+        # PERUBAHAN: Penulisan opacity warna yang benar sesuai aturan Flet terbaru!
+        bgcolor=ft.Colors.with_opacity(0.95, ft.Colors.WHITE), 
+        padding=30, border_radius=20,
         shadow=ft.BoxShadow(blur_radius=30, color=ft.Colors.BLACK26)
     )
 
