@@ -1,4 +1,5 @@
 import flet as ft
+import flet_audio as fta
 import os
 import json
 import uuid
@@ -37,7 +38,7 @@ def main(page: ft.Page):
     search_query = ""
 
     # --- KOMPONEN AUDIO ---
-    audio = ft.Audio(autoplay=True)
+    audio = fta.Audio(autoplay=True)
     page.overlay.append(audio)
 
     # --- ELEMEN UI ---
