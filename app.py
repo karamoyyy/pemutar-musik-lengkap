@@ -1,328 +1,157 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karamoyy.</title>
-    <style>
-        :root {
-            --primary: #ff7eb3;
-            --secondary: #ff758c;
-            --bg: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
-            --card-bg: rgba(255, 255, 255, 0.9);
-            --text: #333;
-        }
+import os
+import json
+import uuid
+from flask import Flask, render_template, request, jsonify
+import yt_dlp
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg);
-            min-height: 100vh;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--text);
-            padding: 20px 0;
-        }
+app = Flask(__name__)
 
-        .container {
-            background: var(--card-bg);
-            width: 90%;
-            max-width: 500px;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
+# Pengaturan Folder
+MUSIC_FOLDER = 'static/music'
+PLAYLIST_FILE = 'playlist.json'
+os.makedirs(MUSIC_FOLDER, exist_ok=True)
 
-        h1 {
-            text-align: center;
-            color: var(--secondary);
-            margin-top: 0;
-        }
+def read_playlist():
+    if not os.path.exists(PLAYLIST_FILE):
+        return []
+    try:
+        with open(PLAYLIST_FILE, 'r') as f:
+            return json.load(f)
+    except:
+        return []
 
-        .song-count { font-size: 16px; font-weight: normal; color: var(--primary); }
-        audio { width: 100%; margin: 20px 0 10px 0; outline: none; }
+def save_playlist(playlist):
+    with open(PLAYLIST_FILE, 'w') as f:
+        json.dump(playlist, f, indent=4)
 
-        .btn-mode {
-            background: transparent; color: var(--primary); border: 2px solid var(--primary);
-            border-radius: 20px; width: auto; padding: 5px 15px; font-size: 12px;
-            margin: 0 auto 15px auto; display: block; transition: all 0.3s;
-        }
-        .btn-mode:hover { background: var(--primary); color: white; opacity: 1; }
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        .controls-section {
-            background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
+@app.route('/api/songs', methods=['GET'])
+def get_songs():
+    return jsonify(read_playlist())
 
-        input[type="text"], input[type="file"] {
-            width: calc(100% - 20px); padding: 10px; margin-bottom: 10px;
-            border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 14px;
-        }
-        #search-input:focus { border-color: var(--primary); outline: none; }
+@app.route('/api/upload', methods=['POST'])
+def upload_song():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Tidak ada file'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'File kosong'}), 400
+    
+    song_id = str(uuid.uuid4())
+    filename = f"{song_id}_{file.filename}"
+    filepath = os.path.join(MUSIC_FOLDER, filename)
+    file.save(filepath)
+    
+    playlist = read_playlist()
+    new_song = {
+        'id': song_id,
+        'title': file.filename,
+        'path': filepath
+    }
+    playlist.append(new_song)
+    save_playlist(playlist)
+    
+    return jsonify(new_song)
 
-        button {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            color: white; border: none; padding: 10px 20px; border-radius: 8px;
-            cursor: pointer; font-weight: bold; transition: opacity 0.3s;
-            width: 100%; margin-bottom: 5px;
-        }
-        button:hover { opacity: 0.9; }
+@app.route('/api/add_youtube', methods=['POST'])
+def add_youtube():
+    data = request.json
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({'error': 'URL tidak valid'}), 400
 
-        .playlist { list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto; }
+    song_id = str(uuid.uuid4())
+    save_path = os.path.join(MUSIC_FOLDER, f"{song_id}.%(ext)s")
 
-        .song-item {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #fff; padding: 10px 15px; margin-bottom: 8px;
-            border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); gap: 10px;
-        }
-
-        .song-title {
-            cursor: pointer; flex-grow: 1; font-weight: bold; color: #555;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .song-title.playing { color: var(--primary); }
-        .song-title:hover { color: var(--primary); }
-
-        .btn-group { display: flex; gap: 3px; }
-        .btn-move { background: #e0c3fc; color: #333; width: auto; padding: 5px 8px; font-size: 12px; margin-bottom: 0; }
-        .btn-move:hover { background: #a18cd1; color: white; }
-        .btn-edit { background: #4facfe; width: auto; padding: 5px 8px; font-size: 12px; margin-bottom: 0; }
-        .btn-delete { background: #ff4b4b; width: auto; padding: 5px 8px; font-size: 12px; margin-bottom: 0; }
-
-        .social-navbar {
-            display: flex; justify-content: center; gap: 20px; margin-top: 25px;
-            padding-top: 20px; border-top: 2px dashed #ffc3d4;
-        }
-        .social-navbar a {
-            text-decoration: none; color: #888; font-size: 14px; font-weight: bold;
-            transition: all 0.3s; display: flex; align-items: center; gap: 5px;
-        }
-        .social-navbar a:hover { color: var(--primary); transform: scale(1.1); }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>Karamoyy.<span class="song-count" id="total-songs">(0 Lagu)</span></h1>
-
-    <audio id="audio-player" controls></audio>
-    <p id="now-playing" style="text-align: center; font-size: 14px; color: #888; margin-top: 0;">Pilih lagu untuk diputar</p>
-
-    <button id="repeat-btn" class="btn-mode" onclick="toggleRepeatMode()">➡️ Putar Berurutan</button>
-
-    <div class="controls-section">
-        <strong>Tambah dari YouTube Music:</strong>
-        <input type="text" id="yt-url" placeholder="https://youtube.com/...">
-        <button onclick="addYouTube()">Download & Simpan Lagu</button>
-        <span id="loading-yt" style="display:none; color: var(--primary); font-size: 12px;">Sedang mendownload... Mohon tunggu.</span>
-    </div>
-
-    <div class="controls-section">
-        <strong>Upload From File:</strong>
-        <input type="file" id="file-upload" accept="audio/*">
-        <button onclick="uploadFile()">Upload Lagu</button>
-    </div>
-
-    <div class="controls-section" style="padding-bottom: 5px;">
-        <strong>Cari Lagu:</strong>
-        <input type="text" id="search-input" placeholder="Ketik judul lagu yang disimpan..." onkeyup="searchSong()">
-    </div>
-
-    <ul class="playlist" id="playlist"></ul>
-
-    <div class="social-navbar">
-        <a href="https://instagram.com/dndycihuyy_" target="_blank">IG</a>
-        <a href="https://tiktok.com/@dannsoniced" target="_blank">TikTok</a>
-        <a href="https://wa.me/6283875965216" target="_blank">WA</a>
-        <a href="mailto:dandyahmad647@gmail.com" target="_blank">Gmail</a>
-    </div>
-</div>
-
-<script>
-    const audioPlayer = document.getElementById('audio-player');
-    const nowPlaying = document.getElementById('now-playing');
-    const playlistContainer = document.getElementById('playlist');
-    const totalSongsText = document.getElementById('total-songs');
-    const repeatBtn = document.getElementById('repeat-btn');
-
-    let currentPlaylist = [];
-    let currentPlayingIndex = -1;
-    let currentPlayingId = null; 
-    let repeatMode = 0;
-
-    function toggleRepeatMode() {
-        repeatMode = (repeatMode + 1) % 3;
-        if (repeatMode === 0) {
-            repeatBtn.innerText = '➡️ Putar Berurutan';
-            audioPlayer.loop = false;
-        } else if (repeatMode === 1) {
-            repeatBtn.innerText = '🔂 Ulangi Lagu';
-            audioPlayer.loop = true;
-        } else if (repeatMode === 2) {
-            repeatBtn.innerText = '🔁 Ulangi Semua Lagu';
-            audioPlayer.loop = false;
-        }
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': save_path,
+        'noplaylist': True,
     }
 
-    function fetchPlaylist() {
-        fetch('/api/songs')
-            .then(response => response.json())
-            .then(songs => {
-                currentPlaylist = songs;
-                totalSongsText.innerText = `(${songs.length} Lagu)`;
-                playlistContainer.innerHTML = '';
-
-                if (currentPlayingId) {
-                    currentPlayingIndex = songs.findIndex(s => s.id === currentPlayingId);
-                }
-
-                songs.forEach((song, index) => {
-                    const li = document.createElement('li');
-                    li.className = 'song-item';
-
-                    const titleSpan = document.createElement('span');
-                    titleSpan.className = 'song-title';
-                    titleSpan.id = 'song-title-' + index;
-                    titleSpan.innerText = song.title;
-                    titleSpan.onclick = () => playSong(song, index);
-
-                    const btnGroup = document.createElement('div');
-                    btnGroup.className = 'btn-group';
-
-                    const upBtn = document.createElement('button');
-                    upBtn.className = 'btn-move'; upBtn.innerHTML = '⬆️';
-                    upBtn.onclick = (e) => { e.stopPropagation(); moveSong(song.id, 'up'); };
-
-                    const downBtn = document.createElement('button');
-                    downBtn.className = 'btn-move'; downBtn.innerHTML = '⬇️';
-                    downBtn.onclick = (e) => { e.stopPropagation(); moveSong(song.id, 'down'); };
-
-                    const editBtn = document.createElement('button');
-                    editBtn.className = 'btn-edit'; editBtn.innerText = 'Rename';
-                    editBtn.onclick = () => renameSong(song.id, song.title);
-
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'btn-delete'; deleteBtn.innerText = 'Hapus';
-                    deleteBtn.onclick = () => deleteSong(song.id);
-
-                    if(index === 0) upBtn.style.visibility = 'hidden';
-                    if(index === songs.length - 1) downBtn.style.visibility = 'hidden';
-
-                    btnGroup.appendChild(upBtn); btnGroup.appendChild(downBtn);
-                    btnGroup.appendChild(editBtn); btnGroup.appendChild(deleteBtn);
-
-                    li.appendChild(titleSpan); li.appendChild(btnGroup);
-                    playlistContainer.appendChild(li);
-                });
-                highlightCurrentSong(); searchSong();
-            });
-    }
-
-    function playSong(song, index) {
-        currentPlayingIndex = index;
-        currentPlayingId = song.id; 
-        audioPlayer.src = '/' + song.path;
-        nowPlaying.innerText = "Sedang diputar: " + song.title;
-        audioPlayer.play();
-        highlightCurrentSong();
-    }
-
-    function highlightCurrentSong() {
-        const allTitles = document.getElementsByClassName('song-title');
-        for (let i = 0; i < allTitles.length; i++) allTitles[i].classList.remove('playing');
-        if (currentPlayingIndex !== -1) {
-            const activeTitle = document.getElementById('song-title-' + currentPlayingIndex);
-            if (activeTitle) activeTitle.classList.add('playing');
-        }
-    }
-
-    audioPlayer.addEventListener('ended', function() {
-        if (repeatMode === 1) return;
-        if (currentPlayingIndex === -1) return;
-        let nextIndex = currentPlayingIndex + 1;
-        if (nextIndex < currentPlaylist.length) {
-            playSong(currentPlaylist[nextIndex], nextIndex);
-        } else {
-            if (repeatMode === 2) {
-                playSong(currentPlaylist[0], 0);
-            } else if (repeatMode === 0) {
-                nowPlaying.innerText = "Selesai memutar semua lagu";
-                currentPlayingIndex = -1; currentPlayingId = null;
-                highlightCurrentSong();
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            title = info.get('title', 'Lagu YouTube')
+            ext = info.get('ext', 'webm')
+            
+            playlist = read_playlist()
+            new_song = {
+                'id': song_id,
+                'title': title,
+                'path': f"{MUSIC_FOLDER}/{song_id}.{ext}"
             }
-        }
-    });
+            playlist.append(new_song)
+            save_playlist(playlist)
+            
+            return jsonify(new_song)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-    function moveSong(id, direction) {
-        fetch('/api/move', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, direction: direction })
-        }).then(() => fetchPlaylist());
-    }
+@app.route('/api/rename', methods=['POST'])
+def rename_song():
+    data = request.json
+    song_id = data.get('id')
+    new_title = data.get('title')
+    
+    playlist = read_playlist()
+    for song in playlist:
+        if song['id'] == song_id:
+            song['title'] = new_title
+            save_playlist(playlist)
+            return jsonify({'success': True})
+            
+    return jsonify({'error': 'Lagu tidak ditemukan'}), 404
 
-    function renameSong(id, oldTitle) {
-        const newTitle = prompt("Masukkan nama lagu baru:", oldTitle);
-        if (newTitle && newTitle.trim() !== "") {
-            fetch('/api/rename', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, title: newTitle })
-            }).then(() => fetchPlaylist());
-        }
-    }
+@app.route('/api/delete', methods=['POST'])
+def delete_song():
+    data = request.json
+    song_id = data.get('id')
+    
+    playlist = read_playlist()
+    for song in playlist:
+        if song['id'] == song_id:
+            try:
+                if os.path.exists(song['path']):
+                    os.remove(song['path'])
+            except Exception as e:
+                pass
+            
+            playlist.remove(song)
+            save_playlist(playlist)
+            return jsonify({'success': True})
+            
+    return jsonify({'error': 'Lagu tidak ditemukan'}), 404
 
-    function deleteSong(id) {
-        if (confirm("Apakah kamu yakin ingin menghapus lagu ini?")) {
-            fetch('/api/delete', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id })
-            }).then(() => {
-                if (currentPlayingId === id) {
-                    audioPlayer.pause(); audioPlayer.src = '';
-                    nowPlaying.innerText = "Pilih lagu untuk diputar";
-                    currentPlayingIndex = -1; currentPlayingId = null;
-                }
-                fetchPlaylist();
-            });
-        }
-    }
+@app.route('/api/move', methods=['POST'])
+def move_song():
+    data = request.json
+    song_id = data.get('id')
+    direction = data.get('direction')
+    
+    playlist = read_playlist()
+    idx = -1
+    for i, song in enumerate(playlist):
+        if song['id'] == song_id:
+            idx = i
+            break
+            
+    if idx != -1:
+        if direction == 'up' and idx > 0:
+            playlist[idx], playlist[idx-1] = playlist[idx-1], playlist[idx]
+            save_playlist(playlist)
+            return jsonify({'success': True})
+        elif direction == 'down' and idx < len(playlist) - 1:
+            playlist[idx], playlist[idx+1] = playlist[idx+1], playlist[idx]
+            save_playlist(playlist)
+            return jsonify({'success': True})
+            
+    return jsonify({'error': 'Lagu tidak dapat dipindahkan'}), 400
 
-    function uploadFile() {
-        const fileInput = document.getElementById('file-upload');
-        if (!fileInput.files[0]) return alert("Pilih file dulu!");
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        fetch('/api/upload', { method: 'POST', body: formData }).then(() => {
-            fileInput.value = ''; fetchPlaylist();
-        });
-    }
-
-    function addYouTube() {
-        const urlInput = document.getElementById('yt-url');
-        const loading = document.getElementById('loading-yt');
-        if (!urlInput.value) return alert("Masukkan link YouTube dulu!");
-        loading.style.display = 'block';
-        fetch('/api/add_youtube', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: urlInput.value })
-        }).then(response => response.json())
-          .then(data => {
-              loading.style.display = 'none';
-              if(data.error) alert("Error: " + data.error);
-              urlInput.value = ''; fetchPlaylist();
-          });
-    }
-
-    function searchSong() {
-        const input = document.getElementById('search-input').value.toLowerCase();
-        const songItems = document.getElementsByClassName('song-item');
-        for (let i = 0; i < songItems.length; i++) {
-            const title = songItems[i].getElementsByClassName('song-title')[0].innerText.toLowerCase();
-            songItems[i].style.display = title.includes(input) ? "flex" : "none";
-        }
-    }
-
-    fetchPlaylist();
-</script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(debug=True)
